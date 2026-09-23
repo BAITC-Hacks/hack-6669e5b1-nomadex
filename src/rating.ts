@@ -1,21 +1,13 @@
-import type { Draft } from "./types";
-
-const criteria = [
-  { key: "problem", label: "Проблема и контекст", weight: 20, fields: ["description", "target"] as const },
-  { key: "result", label: "Ожидаемый результат", weight: 20, fields: ["desiredResult"] as const },
-  { key: "acceptance", label: "Критерии приёмки", weight: 20, fields: ["acceptanceCriteria"] as const },
-  { key: "scope", label: "Границы задачи", weight: 15, fields: ["scope"] as const },
-  { key: "resources", label: "Исходные данные и ресурсы", weight: 15, fields: ["resources"] as const },
-  { key: "constraints", label: "Сроки и ограничения", weight: 10, fields: ["constraints"] as const }
+import { normalizeField, type Field } from "../shared/contract";
+export const criteria: { key: Field; label: string; weight: number; hint: string }[] = [
+  { key: "problemContext", label: "Проблема и контекст", weight: 20, hint: "Опишите, что происходит и кому это мешает." },
+  { key: "expectedResult", label: "Ожидаемый результат", weight: 20, hint: "Укажите конкретный результат и формат передачи." },
+  { key: "acceptanceCriteria", label: "Критерии приёмки", weight: 20, hint: "Опишите способ проверки результата." },
+  { key: "scope", label: "Границы задачи", weight: 15, hint: "Укажите, что входит в работу и что исключено." },
+  { key: "resources", label: "Данные и ресурсы", weight: 15, hint: "Перечислите доступные материалы или подтвердите их отсутствие." },
+  { key: "timingConstraints", label: "Сроки и ограничения", weight: 10, hint: "Укажите срок и ограничения или их явное отсутствие." }
 ];
-
-export function calculateRating(draft: Draft) {
-  const breakdown = criteria.map((criterion) => {
-    const complete = criterion.fields.every((field) => {
-      const value = draft[field].trim().toLowerCase();
-      return value.length > 0 && value !== "не знаю" && value !== "уточняется";
-    });
-    return { ...criterion, earned: complete ? criterion.weight : 0 };
-  });
+export function calculateRating(fields: Record<Field, string | null>) {
+  const breakdown = criteria.map(item => ({ ...item, earned: normalizeField(fields[item.key]) ? item.weight : 0 }));
   return { total: breakdown.reduce((sum, item) => sum + item.earned, 0), breakdown };
 }
