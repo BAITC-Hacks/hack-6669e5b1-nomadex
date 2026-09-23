@@ -20,6 +20,7 @@
     "vite.config.ts",
     "server",
     "shared",
-    "tests"
+    "tests",
+    "scripts"
   ]
 }

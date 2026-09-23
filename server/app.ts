@@ -19,13 +19,13 @@ export class AnalysisFailure extends Error {
   constructor(public code: string, public status: number) { super(code); }
 }
 export type Analyzer = (input: AnalysisInput) => Promise<string>;
-export function createOpenAIAnalyzer(env: NodeJS.ProcessEnv = process.env): Analyzer {
+export function createOpenAIAnalyzer(env: NodeJS.ProcessEnv = process.env, transport?: typeof fetch): Analyzer {
   return async input => {
-    if (!env.OPENAI_API_KEY || !env.OPENAI_MODEL) throw new AnalysisFailure("NOT_CONFIGURED", 503);
-    const client = new OpenAI({ apiKey: env.OPENAI_API_KEY, timeout: 15000, maxRetries: 0 });
+    if (!env.OPENAI_API_KEY?.trim() || !env.OPENAI_MODEL?.trim()) throw new AnalysisFailure("NOT_CONFIGURED", 503);
+    const client = new OpenAI({ apiKey: env.OPENAI_API_KEY.trim(), timeout: 15000, maxRetries: 0, fetch: transport });
     try {
       const response = await client.responses.create({
-        model: env.OPENAI_MODEL, instructions: SYSTEM_PROMPT,
+        model: env.OPENAI_MODEL.trim(), instructions: SYSTEM_PROMPT,
         input: JSON.stringify(input), store: false, max_output_tokens: 3000,
         text: { format: { type: "json_schema", name: "task_analysis", strict: true, schema: outputJsonSchema } }
       });

@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "server": "tsx server/index.ts",
     "typecheck": "tsc -b",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "check": "npm run typecheck && npm test && npm run build",
+    "check:openai": "tsx scripts/check-openai.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
