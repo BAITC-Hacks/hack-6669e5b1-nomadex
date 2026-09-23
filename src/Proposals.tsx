@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import ResultPanel from "./ResultPanel";
 import { proposalInputSchema, type Actor, type AppState, type Proposal, type StoreAction, type Task } from "./store";
 
-type Props = { state: AppState; task: Task; actor: Actor; onAction: (action: StoreAction) => void };
+type Props = { state: AppState; task: Task; actor: Actor; teamPoints?: Record<string, number>; onAction: (action: StoreAction) => void };
 const statuses = { submitted: "Ожидает решения", selected: "Команда выбрана", rejected: "Команда не выбрана" };
 function ProposalLink({ proposal }: { proposal: Proposal }) {
   // Seed links refer to the synthetic description shown in this same card.
@@ -42,7 +42,7 @@ function ProposalForm({ task, actor, onAction }: Omit<Props, "state">) {
     {error && <p className="warning" role="alert">{error}</p>}<button className="primary" type="submit">Отправить предложение</button>
   </form>;
 }
-export default function Proposals({ state, task, actor, onAction }: Props) {
+export default function Proposals({ state, task, actor, teamPoints, onAction }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [reviewing, setReviewing] = useState(false);
   const proposals = state.proposals.filter(p => p.taskId === task.id);
@@ -57,7 +57,7 @@ export default function Proposals({ state, task, actor, onAction }: Props) {
     {own && !closed && <p role="status" className="notice">Предложение отправлено. Повторный отклик недоступен; ожидайте решения бизнеса.</p>}
     <div className="proposal-grid">{visible.map(p => <ProposalCard key={p.id} proposal={p} team={state.teams.find(t => t.id === p.teamId)!}>
       {isOwner && !closed && <label className="proposal-choice"><input type="checkbox" checked={selected.includes(p.id)} onChange={e => { setSelected(e.target.checked ? [...selected, p.id] : selected.filter(id => id !== p.id)); setReviewing(false); }} />Выбрать {state.teams.find(t => t.id === p.teamId)!.name}</label>}
-      <ResultPanel state={state} proposal={p} actor={actor} onAction={onAction} />
+      <ResultPanel state={state} proposal={p} actor={actor} points={teamPoints?.[p.teamId]} onAction={onAction} />
     </ProposalCard>)}</div>
     {isOwner && !proposals.length && <p className="notice">Откликов пока нет. Можно дождаться предложений или завершить приём без выбора команды.</p>}
     {isOwner && !closed && <div className="card decision">

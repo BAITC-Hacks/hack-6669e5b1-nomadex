@@ -1,9 +1,9 @@
 import React, { useState, type FormEvent } from "react";
 import { selectTeamPoints, type Actor, type AppState, type Proposal, type StoreAction } from "./store";
 
-type Props = { state: AppState; proposal: Proposal; actor: Actor; onAction: (action: StoreAction) => void };
+type Props = { state: AppState; proposal: Proposal; actor: Actor; points?: number; onAction: (action: StoreAction) => void };
 
-export default function ResultPanel({ state, proposal, actor, onAction }: Props) {
+export default function ResultPanel({ state, proposal, actor, points, onAction }: Props) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const task = state.tasks.find(t => t.id === proposal.taskId);
@@ -35,6 +35,6 @@ export default function ResultPanel({ state, proposal, actor, onAction }: Props)
       {error && <p className="warning" role="alert">{error}</p>}
       <button type="submit" className="primary" disabled={!text.trim()}>Отправить результат</button>
     </form> : <p className="notice">Команда ещё не отправила результат этапа.</p>}
-    <p className="team-points">Всего баллов команды: <strong>{selectTeamPoints(state, proposal.teamId)}</strong></p>
+    <p className="team-points">Всего баллов команды: <strong>{points ?? selectTeamPoints(state, proposal.teamId)}</strong></p>
   </section>;
 }

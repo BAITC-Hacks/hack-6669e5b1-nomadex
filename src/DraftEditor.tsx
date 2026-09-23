@@ -15,8 +15,8 @@ function toInput(draft: Draft): AnalysisInput {
   return { schemaVersion: 2, description: draft.description,
     fields: Object.fromEntries(fieldKeys.map(k => [k, normalizeField(draft[k])])) as AnalysisInput["fields"], previousAnswers: draft.answers };
 }
-type Props = { task: Task; onEdit: (draft: Draft) => void; onConfirm: (confirmed: boolean) => void; onPublish: () => void };
-export default function DraftEditor({ task, onEdit, onConfirm, onPublish }: Props) {
+type Props = { task: Task; actionsDisabled?: boolean; onEdit: (draft: Draft) => void; onConfirm: (confirmed: boolean) => void; onPublish: () => void };
+export default function DraftEditor({ task, actionsDisabled = false, onEdit, onConfirm, onPublish }: Props) {
   const draft = taskDraft(task);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [stale, setStale] = useState(false);
@@ -78,7 +78,7 @@ export default function DraftEditor({ task, onEdit, onConfirm, onPublish }: Prop
         return <li key={q.id}><strong>{q.question}</strong><p>{q.reason}</p><label className="field">Ответ (можно пропустить)<textarea maxLength={2000} value={value} onChange={e => answer(q.id, q.field, e.target.value)} /></label><button disabled={!value.trim()} onClick={() => { const combined = [draft[q.field], value].filter(Boolean).join("\n"); if (combined.length > 2000) { setWarning("Сократите ответ: вместе с полем он длиннее 2000 символов."); return; } update(q.field, combined); }}>Добавить ответ в поле «{labels[q.field]}»</button></li>;
       })}</ol></div>}
       {draft.answers.length > 0 && <details><summary>Сохранённые ответы ({draft.answers.length})</summary><ul>{draft.answers.map(a => <li key={`${a.questionId}-${a.field}`}><strong>{labels[a.field]}</strong><p className="multiline">{a.answer || "Без ответа"}</p></li>)}</ul></details>}
-      <div className="confirm"><label><input type="checkbox" checked={task.confirmed} disabled={!draft.title.trim() || !draft.description.trim()} onChange={e => onConfirm(e.target.checked)} /> Я проверил все заполненные поля и подтверждаю рейтинг карточки</label><button className="primary" disabled={!task.confirmed || !draft.title.trim() || !draft.description.trim()} onClick={onPublish}>Опубликовать в каталоге</button></div>
+      <div className="confirm"><label><input type="checkbox" checked={task.confirmed} disabled={actionsDisabled || !draft.title.trim() || !draft.description.trim()} onChange={e => onConfirm(e.target.checked)} /> Я проверил все заполненные поля и подтверждаю рейтинг карточки</label><button className="primary" disabled={actionsDisabled || !task.confirmed || !draft.title.trim() || !draft.description.trim()} onClick={onPublish}>Опубликовать в каталоге</button></div>
       <p className="notice">Любая правка сбрасывает подтверждение. После публикации карточка фиксируется; задача с неполными сведениями доступна всем с текущим рейтингом {calculateRating(task).total}/100.</p>
       <details><summary>Проверка AI для демонстрации</summary><p>Версия промпта: 2</p><pre>{SYSTEM_PROMPT}</pre><h3>Последний вход</h3><pre>{JSON.stringify(capturedInput, null, 2)}</pre><h3>Проверенный выход</h3><pre>{JSON.stringify(analysis, null, 2)}</pre><select aria-label="Некорректный ответ" value={invalidDemo} onChange={e => setInvalidDemo(e.target.value)}><option value="not-json">Не JSON</option><option value="two">Только два вопроса</option><option value="unknown">Неизвестное поле</option></select><button onClick={invalidResponseDemo}>Проверить неверный ответ</button></details>
     </section>

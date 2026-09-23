@@ -1,11 +1,12 @@
 import { fallback, parseAnalysis, requestSchema, errorMessages, type AnalysisInput, type Analysis } from "../shared/contract";
+import { mutationHeaders } from "./api";
 export type AnalysisResult = { analysis: Analysis; warning: string | null };
 export async function analyzeTask(input: AnalysisInput, signal?: AbortSignal): Promise<AnalysisResult> {
   requestSchema.parse(input);
   let code = "NETWORK_ERROR";
   try {
     const response = await fetch("/api/analyze-task", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
+      method: "POST", credentials: "same-origin", headers: mutationHeaders(), body: JSON.stringify(input),
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(18000)]) : AbortSignal.timeout(18000)
     });
     if (!response.ok) {

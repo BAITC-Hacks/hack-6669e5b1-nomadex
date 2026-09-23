@@ -1,5 +1,16 @@
 import "dotenv/config";
-import { createApp } from "./app";
+import { resolve } from "node:path";
+import { Database } from "./database";
+import { createPlatform } from "./platform";
 const port = Number(process.env.PORT ?? 8787);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("PORT must be between 1 and 65535");
-createApp().listen(port, "127.0.0.1", () => console.log(`NomadEX AI server: http://127.0.0.1:${port}`));
+const environment = process.env.NODE_ENV ?? "development";
+const secureCookies = environment === "production";
+const origins = (process.env.APP_ORIGINS ?? (secureCookies ? "" : "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:4173,http://localhost:4173")).split(",").filter(Boolean);
+if (!origins.length || origins.some(origin => { try { const url = new URL(origin); return url.origin !== origin || (secureCookies && url.protocol !== "https:"); } catch { return true; } })) throw new Error("Configure valid APP_ORIGINS (HTTPS in production)");
+if (secureCookies && !process.env.DATABASE_PATH) throw new Error("Production requires an explicit DATABASE_PATH");
+const db = new Database(process.env.DATABASE_PATH ?? `data/${environment}.sqlite`);
+const server = createPlatform(db, { origins, secureCookies, staticRoot: process.env.SERVE_WEB === "1" ? resolve("dist") : undefined });
+server.requestTimeout = 30000;
+server.listen(port, process.env.HOST ?? "127.0.0.1", () => console.log(`NomadEX API listening on port ${port}`));
+for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => server.close(() => { db.close(); process.exit(0); }));
