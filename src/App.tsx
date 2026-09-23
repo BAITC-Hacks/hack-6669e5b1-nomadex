@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useState } from "react";
+import { readinessLevel, readinessLevels, type ReadinessLevel } from "./rating";
 import type { Profile } from "./types";
 import { loadAppState, reduceStore, resetAppState, saveAppState, selectCatalog, selectOwnedTasks, selectTeamPoints, type AppState, type Actor, type StoreAction } from "./store";
 import DraftEditor from "./DraftEditor";
@@ -23,9 +24,13 @@ export default function App() {
   const [view, setView] = useState<View>("mine");
   const [selectedId, setSelectedId] = useState<string | null>(initial.state.tasks.find(t => t.status === "draft")?.id ?? null);
   const actor: Actor = { kind: profile === "business" ? "business" : "team", id: profile === "business" ? state.businesses[0].id : profile };
+  const [industry, setIndustry] = useState("");
+  const [level, setLevel] = useState<ReadinessLevel | "">("");
   const catalog = selectCatalog(state);
+  const filtered = selectCatalog(state, { industry, level });
+  const industries = [...new Set(catalog.map(t => t.industry).filter(Boolean))].sort();
   const owned = selectOwnedTasks(state, actor);
-  const visible = view === "catalog" ? catalog : owned;
+  const visible = view === "catalog" ? filtered : owned;
   const selected = visible.find(t => t.id === selectedId);
   useEffect(() => {
     if (blocked) return;
@@ -33,10 +38,10 @@ export default function App() {
     if (!ok) setStorageWarning("Сохранение недоступно. Изменения остаются в памяти до закрытия вкладки.");
   }, [state, blocked]);
   function changeView(next: View) {
-    setView(next); setSelectedId(null);
+    setView(next); setSelectedId(null); setIndustry(""); setLevel("");
   }
   function changeProfile(next: Profile) {
-    setProfile(next); setView(next === "business" ? "mine" : "catalog"); setSelectedId(null);
+    setIndustry(""); setLevel(""); setProfile(next); setView(next === "business" ? "mine" : "catalog"); setSelectedId(null);
   }
   function createTask() {
     const id = `task-${crypto.randomUUID()}`;
@@ -46,7 +51,7 @@ export default function App() {
     if (!window.confirm("Вернуть демонстрационные данные? Созданные задачи и изменения в этом приложении будут удалены. Остальные данные браузера сохранятся.")) return;
     const loaded = resetAppState(); dispatch({ type: "reset", state: loaded.state });
     setBlocked(loaded.blocked); setSaved(!loaded.blocked); setStorageWarning(loaded.warning);
-    setSelectedId(null); setProfile("business"); setView("mine");
+    setIndustry(""); setLevel(""); setSelectedId(null); setProfile("business"); setView("mine");
   }
   return <main className="shell">
     <header className="topbar"><div><span className="eyebrow">NomadEX / прототип</span><h1>Задача, которую можно понять</h1><p>Уточните задачу и опубликуйте её для студенческих команд.</p></div><label className="profile">Демо-профиль<select value={profile} onChange={e => changeProfile(e.target.value as Profile)}><option value="business">Представитель бизнеса</option>{state.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label></header>
@@ -59,8 +64,13 @@ export default function App() {
     <section aria-label={view === "mine" ? "Список моих задач" : "Общий каталог"}>
       <h2>{view === "mine" ? "Мои задачи" : "Общий каталог"}</h2>
       <p className="notice">{view === "mine" ? "Черновики видны только бизнесу. Выберите задачу, чтобы продолжить её подготовку." : "Выше расположены задачи с более полным описанием. При равном рейтинге сначала идут новые публикации."}</p>
-      {visible.length === 0 ? <div className="card empty">{view === "mine" ? "Задач пока нет. Создайте первую." : "Опубликованных задач пока нет."}</div> : <div className="task-list">{visible.map((task, index) => <button className={`task-list-item ${task.id === selectedId ? "selected" : ""}`} key={task.id} aria-pressed={task.id === selectedId} onClick={() => setSelectedId(task.id)}><span className="task-list-top"><span className="eyebrow">{view === "catalog" ? `#${index + 1} · ` : ""}{task.industry || "Отрасль не указана"}</span><b>{task.readinessScore}/100</b></span><strong>{task.title || "Без названия"}</strong><span className="task-excerpt">{task.description || "Добавьте описание задачи"}</span><span className="pill">{task.status === "published" ? task.decisionFinalizedAt ? "Приём закрыт" : "Открыт приём предложений" : task.confirmed ? "Готово к публикации" : "Черновик"}</span></button>)}</div>}
+      {view === "catalog" && <div className="catalog-filters">
+        <label>Тема / отрасль<select value={industry} onChange={e => { setIndustry(e.target.value); setSelectedId(null); }}><option value="">Все темы</option>{industries.map(i => <option key={i} value={i}>{i}</option>)}</select></label>
+        <label>Уровень готовности<select value={level} onChange={e => { setLevel(e.target.value as ReadinessLevel | ""); setSelectedId(null); }}><option value="">Все уровни</option>{readinessLevels.map(l => <option key={l.id} value={l.id}>{l.label} ({l.min}–{l.max})</option>)}</select></label>
+        <button onClick={() => { setIndustry(""); setLevel(""); setSelectedId(null); }}>Сбросить фильтры</button><span role="status">Показано {filtered.length} из {catalog.length}</span>
+      </div>}
+      {visible.length === 0 ? <div className="card empty">{view === "mine" ? "Задач пока нет. Создайте первую." : catalog.length ? "Нет задач по выбранным фильтрам. Сбросьте фильтры, чтобы увидеть все задачи." : "Опубликованных задач пока нет."}</div> : <div className="task-list">{visible.map((task, index) => <button className={`task-list-item ${task.id === selectedId ? "selected" : ""} ${task.confirmed && readinessLevel(task.readinessScore).id === "priority" ? "priority-task" : ""}`} key={task.id} aria-pressed={task.id === selectedId} onClick={() => setSelectedId(task.id)}><span className="task-list-top"><span className="eyebrow">{view === "catalog" ? `#${index + 1} · ` : ""}{task.industry || "Отрасль не указана"}</span><b>{!task.confirmed && "Предв. "}{task.readinessScore}/100</b></span><strong>{task.title || "Без названия"}</strong><span className="task-excerpt">{task.description || "Добавьте описание задачи"}</span><span className={`pill readiness-${readinessLevel(task.readinessScore).id}`}>{!task.confirmed && "Предварительно: "}{readinessLevel(task.readinessScore).label}</span><span className="pill">{task.status === "published" ? task.decisionFinalizedAt ? "Приём закрыт" : "Открыт приём предложений" : task.confirmed ? "Готово к публикации" : "Черновик"}</span></button>)}</div>}
     </section>
-    <div className="task-detail">{selected?.status === "draft" && profile === "business" ? <DraftEditor key={selected.id} task={selected} onEdit={draft => dispatch({ type: "change", action: { type: "edit", actor, taskId: selected.id, draft } })} onConfirm={confirmed => dispatch({ type: "change", action: { type: "confirm", actor, taskId: selected.id, confirmed } })} onPublish={() => { dispatch({ type: "change", action: { type: "publish", actor, taskId: selected.id, publishedAt: new Date().toISOString() } }); setView("catalog"); }} /> : selected?.status === "published" ? <><TaskView task={selected} businessName={state.businesses.find(b => b.id === selected.businessId)?.name ?? "Бизнес"} /><Proposals key={`${selected.id}-${profile}`} state={state} task={selected} actor={actor} onAction={action => dispatch({ type: "change", action })} /></> : <p className="notice">Выберите карточку из списка для просмотра.</p>}</div>
+    <div className="task-detail">{selected?.status === "draft" && profile === "business" ? <DraftEditor key={selected.id} task={selected} onEdit={draft => dispatch({ type: "change", action: { type: "edit", actor, taskId: selected.id, draft } })} onConfirm={confirmed => dispatch({ type: "change", action: { type: "confirm", actor, taskId: selected.id, confirmed } })} onPublish={() => { dispatch({ type: "change", action: { type: "publish", actor, taskId: selected.id, publishedAt: new Date().toISOString() } }); setIndustry(""); setLevel(""); setView("catalog"); }} /> : selected?.status === "published" ? <><TaskView task={selected} businessName={state.businesses.find(b => b.id === selected.businessId)?.name ?? "Бизнес"} /><Proposals key={`${selected.id}-${profile}`} state={state} task={selected} actor={actor} onAction={action => dispatch({ type: "change", action })} /></> : <p className="notice">Выберите карточку из списка для просмотра.</p>}</div>
   </main>;
 }

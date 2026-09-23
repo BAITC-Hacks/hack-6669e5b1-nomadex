@@ -15,9 +15,9 @@ export async function analyzeTask(input: AnalysisInput, signal?: AbortSignal): P
     }
     code = "INVALID_OUTPUT";
     const data: unknown = JSON.parse(await response.text());
-    if (!data || typeof data !== "object" || !("mode" in data) || data.mode !== "openai" || !("promptVersion" in data) || data.promptVersion !== 1) throw new Error(code);
+    if (!data || typeof data !== "object" || !("mode" in data) || data.mode !== "openai" || !("promptVersion" in data) || data.promptVersion !== 2) throw new Error(code);
     const { mode: _mode, promptVersion: _version, ...payload } = data;
-    return { analysis: { ...parseAnalysis(JSON.stringify(payload)), mode: "openai", promptVersion: 1 }, warning: null };
+    return { analysis: { ...parseAnalysis(JSON.stringify(payload)), mode: "openai", promptVersion: 2 }, warning: null };
   } catch (error) {
     if (signal?.aborted) throw error;
     return { analysis: fallback(input), warning: errorMessages[code] + " Показаны локальные подсказки." };

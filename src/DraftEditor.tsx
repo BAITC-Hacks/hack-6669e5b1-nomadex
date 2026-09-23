@@ -3,19 +3,16 @@ import type { Draft } from "./types";
 import { calculateRating } from "./rating";
 import { taskDraft, type Task } from "./store";
 import { analyzeTask } from "./analysis";
-import { fieldKeys, requestSchema, normalizeField, fallback, parseAnalysis, type Analysis, type AnalysisInput, type Field } from "../shared/contract";
+import { fieldLabels, fieldKeys, requestSchema, normalizeField, fallback, parseAnalysis, type Analysis, type AnalysisInput, type Field } from "../shared/contract";
 import { SYSTEM_PROMPT } from "../shared/prompt";
 import { Rating } from "./TaskView";
 
 type TextKey = Exclude<keyof Draft, "answers">;
 const labels: Record<TextKey, string> = {
-  title: "Название задачи", description: "Краткое исходное описание", industry: "Отрасль",
-  problemContext: "Что происходит и кому это мешает?", expectedResult: "Какой результат и в каком формате нужен?",
-  acceptanceCriteria: "Как бизнес проверит результат?", scope: "Что входит и что исключено?",
-  resources: "Какие данные и ресурсы доступны?", timingConstraints: "Сроки и ограничения"
+  title: "Название задачи", description: "Краткое исходное описание", industry: "Тема / отрасль", ...fieldLabels
 };
 function toInput(draft: Draft): AnalysisInput {
-  return { schemaVersion: 1, description: draft.description,
+  return { schemaVersion: 2, description: draft.description,
     fields: Object.fromEntries(fieldKeys.map(k => [k, normalizeField(draft[k])])) as AnalysisInput["fields"], previousAnswers: draft.answers };
 }
 type Props = { task: Task; onEdit: (draft: Draft) => void; onConfirm: (confirmed: boolean) => void; onPublish: () => void };
@@ -81,9 +78,9 @@ export default function DraftEditor({ task, onEdit, onConfirm, onPublish }: Prop
         return <li key={q.id}><strong>{q.question}</strong><p>{q.reason}</p><label className="field">Ответ (можно пропустить)<textarea maxLength={2000} value={value} onChange={e => answer(q.id, q.field, e.target.value)} /></label><button disabled={!value.trim()} onClick={() => { const combined = [draft[q.field], value].filter(Boolean).join("\n"); if (combined.length > 2000) { setWarning("Сократите ответ: вместе с полем он длиннее 2000 символов."); return; } update(q.field, combined); }}>Добавить ответ в поле «{labels[q.field]}»</button></li>;
       })}</ol></div>}
       {draft.answers.length > 0 && <details><summary>Сохранённые ответы ({draft.answers.length})</summary><ul>{draft.answers.map(a => <li key={`${a.questionId}-${a.field}`}><strong>{labels[a.field]}</strong><p className="multiline">{a.answer || "Без ответа"}</p></li>)}</ul></details>}
-      <div className="confirm"><label><input type="checkbox" checked={task.confirmed} disabled={!draft.title.trim() || !draft.description.trim()} onChange={e => onConfirm(e.target.checked)} /> Я проверил текущую версию карточки</label><button className="primary" disabled={!task.confirmed || !draft.title.trim() || !draft.description.trim()} onClick={onPublish}>Опубликовать в каталоге</button></div>
+      <div className="confirm"><label><input type="checkbox" checked={task.confirmed} disabled={!draft.title.trim() || !draft.description.trim()} onChange={e => onConfirm(e.target.checked)} /> Я проверил все заполненные поля и подтверждаю рейтинг карточки</label><button className="primary" disabled={!task.confirmed || !draft.title.trim() || !draft.description.trim()} onClick={onPublish}>Опубликовать в каталоге</button></div>
       <p className="notice">Любая правка сбрасывает подтверждение. После публикации карточка фиксируется; задача с неполными сведениями доступна всем с текущим рейтингом {calculateRating(task).total}/100.</p>
-      <details><summary>Проверка AI для демонстрации</summary><p>Версия промпта: 1</p><pre>{SYSTEM_PROMPT}</pre><h3>Последний вход</h3><pre>{JSON.stringify(capturedInput, null, 2)}</pre><h3>Проверенный выход</h3><pre>{JSON.stringify(analysis, null, 2)}</pre><select aria-label="Некорректный ответ" value={invalidDemo} onChange={e => setInvalidDemo(e.target.value)}><option value="not-json">Не JSON</option><option value="two">Только два вопроса</option><option value="unknown">Неизвестное поле</option></select><button onClick={invalidResponseDemo}>Проверить неверный ответ</button></details>
+      <details><summary>Проверка AI для демонстрации</summary><p>Версия промпта: 2</p><pre>{SYSTEM_PROMPT}</pre><h3>Последний вход</h3><pre>{JSON.stringify(capturedInput, null, 2)}</pre><h3>Проверенный выход</h3><pre>{JSON.stringify(analysis, null, 2)}</pre><select aria-label="Некорректный ответ" value={invalidDemo} onChange={e => setInvalidDemo(e.target.value)}><option value="not-json">Не JSON</option><option value="two">Только два вопроса</option><option value="unknown">Неизвестное поле</option></select><button onClick={invalidResponseDemo}>Проверить неверный ответ</button></details>
     </section>
     <Rating task={task} />
   </div>;

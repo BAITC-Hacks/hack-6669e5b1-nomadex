@@ -6,7 +6,7 @@ import { SYSTEM_PROMPT, PROMPT_VERSION } from "../shared/prompt";
 export const outputJsonSchema = {
   type: "object", additionalProperties: false, required: ["schemaVersion", "missingFields", "questions"],
   properties: {
-    schemaVersion: { type: "integer", enum: [1] }, missingFields: { type: "array", items: { type: "string", enum: fieldKeys } },
+    schemaVersion: { type: "integer", enum: [2] }, missingFields: { type: "array", items: { type: "string", enum: fieldKeys } },
     questions: { type: "array", items: { type: "object", additionalProperties: false,
       required: ["id", "field", "kind", "question", "reason"], properties: {
         id: { type: "string" }, field: { type: "string", enum: fieldKeys }, kind: { type: "string", enum: ["missing", "verification"] },

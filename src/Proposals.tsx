@@ -20,7 +20,7 @@ function ProposalCard({ proposal, team, children }: { proposal: Proposal; team: 
       <div><dt>План действий</dt><dd><ol>{proposal.plan.map((step, i) => <li className="multiline" key={i}>{step}</li>)}</ol></dd></div>
       <div><dt>Срок</dt><dd className="multiline">{proposal.timing}</dd></div>
       <div><dt>Навыки для задачи</dt><dd>{proposal.skills.join(", ") || "Не указаны"}</dd></div>
-      <div><dt>Ссылка</dt><dd><ProposalLink proposal={proposal} /></dd></div>
+      <div><dt>Прототип</dt><dd><ProposalLink proposal={proposal} /></dd></div>
     </dl>{children}
   </article>;
 }
@@ -30,14 +30,15 @@ function ProposalForm({ task, actor, onAction }: Omit<Props, "state">) {
   function submit(event: FormEvent) {
     event.preventDefault();
     const parsed = proposalInputSchema.safeParse({ ...form, plan: form.plan.split("\n").map(s => s.trim()).filter(Boolean), skills: form.skills.split(",").map(s => s.trim()).filter(Boolean) });
-    if (!parsed.success) { setError("Заполните идею, результат, хотя бы один шаг плана и срок. Ссылка должна начинаться с http:// или https:// и не содержать логин или пароль."); return; }
+    if (!parsed.success) { setError("Заполните идею, результат, хотя бы один шаг плана и срок. Укажите HTTP(S)-ссылку на прототип без логина и пароля или адрес встроенного демо."); return; }
     setError(null);
     onAction({ type: "submitProposal", actor, taskId: task.id, id: `proposal-${crypto.randomUUID()}`, proposal: parsed.data });
   }
-  const field = (key: keyof typeof form, label: string, rows?: number) => <label className="field">{label}{rows ? <textarea required rows={rows} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} /> : <input required={key !== "skills"} type={key === "link" ? "url" : "text"} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} />}</label>;
+  const field = (key: keyof typeof form, label: string, rows?: number) => <label className="field">{label}{rows ? <textarea required rows={rows} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} /> : <input required={key !== "skills"} type="text" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} />}</label>;
   return <form className="card proposal-form" onSubmit={submit} aria-label="Новое предложение">
     <h3>Подать предложение</h3><p className="notice">Одно предложение от команды на задачу. После отправки оно фиксируется; решение принимает бизнес.</p>
-    {field("approach", "Идея решения", 3)}{field("expectedResult", "Ожидаемый результат", 2)}{field("plan", "План действий — каждый шаг с новой строки", 4)}{field("timing", "Предлагаемый срок")}{field("skills", "Навыки для задачи — через запятую (необязательно)")}{field("link", "Ссылка на материалы или портфолио")}
+    {field("approach", "Идея решения", 3)}{field("expectedResult", "Ожидаемый результат", 2)}{field("plan", "План действий — каждый шаг с новой строки", 4)}{field("timing", "Предлагаемый срок")}{field("skills", "Навыки для задачи — через запятую (необязательно)")}{field("link", "Ссылка на прототип")}
+    <p className="notice">Для демонстрационного отклика можно использовать <a href="/prototypes/demo.html?example=requests" target="_blank" rel="noopener noreferrer">встроенный прототип заявок</a>: <code>/prototypes/demo.html?example=requests</code>. В реальном отклике укажите свой прототип.</p>
     {error && <p className="warning" role="alert">{error}</p>}<button className="primary" type="submit">Отправить предложение</button>
   </form>;
 }

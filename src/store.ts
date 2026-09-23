@@ -2,7 +2,8 @@ import { z } from "zod";
 import seed from "../docs/source-data.json";
 import { outputSchema } from "../shared/contract";
 import { createEmptyDraft, draftSchema, type Draft } from "./types";
-import { calculateRating } from "./rating";
+import { legacyDraftSchema, legacyQuestions, legacyScore } from "./legacy";
+import { calculateRating, readinessLevel, type ReadinessLevel } from "./rating";
 import { loadDraft } from "./storage";
 
 const id = z.string().min(1);
@@ -10,11 +11,12 @@ const text = z.string().trim().min(1);
 const date = z.string().datetime();
 const businessSchema = z.object({ id, name: text, description: z.string() }).strict();
 const teamSchema = z.object({ id, name: text, interests: text, skills: z.array(text), technologies: z.array(text) }).strict();
-export const taskSchema = draftSchema.extend({
+const taskBaseSchema = draftSchema.extend({
   id, businessId: id, status: z.enum(["draft", "published"]), confirmed: z.boolean(),
-  publishedAt: date.nullable(), decisionFinalizedAt: date.nullable(), scoringVersion: z.literal(1),
+  publishedAt: date.nullable(), decisionFinalizedAt: date.nullable(), scoringVersion: z.literal(2),
   readinessScore: z.number().int().min(0).max(100), questions: z.array(outputSchema.shape.questions.element).max(6)
-}).strict().superRefine((task, ctx) => {
+}).strict();
+export const taskSchema = taskBaseSchema.superRefine((task, ctx) => {
   if (task.readinessScore !== calculateRating(task).total) ctx.addIssue({ code: "custom", message: "Рейтинг не совпадает с заполненными полями" });
   if (task.status === "published" && (!task.confirmed || !task.publishedAt || !task.title.trim() || !task.description.trim())) ctx.addIssue({ code: "custom", message: "Опубликованная карточка не подтверждена или не заполнена" });
   if (task.status === "draft" && (task.publishedAt !== null || task.decisionFinalizedAt !== null)) ctx.addIssue({ code: "custom", message: "У черновика не может быть публикации или решения" });
@@ -26,17 +28,19 @@ const proposalSchema = z.object({
 }).strict();
 export const proposalInputSchema = proposalSchema.pick({ approach: true, expectedResult: true, timing: true, skills: true, plan: true, link: true }).extend({
   link: text.refine(value => {
+    if (/^\/prototypes\/demo\.html\?example=(requests|stock|knowledge|booking|feedback)$/.test(value)) return true;
     try { const url = new URL(value); return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password; }
     catch { return false; }
-  }, "Укажите полную ссылку http:// или https:// без логина и пароля")
+  }, "Укажите HTTP(S)-ссылку на прототип без логина и пароля или адрес встроенного демо")
 }).strict();
 export type ProposalInput = z.infer<typeof proposalInputSchema>;
 export type Proposal = z.infer<typeof proposalSchema>;
 const resultSchema = z.object({ proposalId: id, text, confirmedAt: date.nullable() }).strict();
-export const storeSchema = z.object({
-  schemaVersion: z.literal(2), businesses: z.array(businessSchema).min(1), teams: z.array(teamSchema),
+const storeBaseSchema = z.object({
+  schemaVersion: z.literal(3), businesses: z.array(businessSchema).min(1), teams: z.array(teamSchema),
   tasks: z.array(taskSchema), proposals: z.array(proposalSchema), results: z.array(resultSchema)
-}).strict().superRefine((state, ctx) => {
+}).strict();
+export const storeSchema = storeBaseSchema.superRefine((state, ctx) => {
   const fail = (message: string) => ctx.addIssue({ code: "custom", message });
   const ids = [...state.businesses, ...state.teams, ...state.tasks, ...state.proposals].map(item => item.id);
   if (new Set(ids).size !== ids.length) fail("Повторяющиеся идентификаторы");
@@ -83,7 +87,7 @@ export function reduceStore(state: AppState, action: StoreAction): AppState {
     owner(state, action.actor);
     const task: Task = { ...createEmptyDraft(), id: action.id, businessId: action.actor.id,
       status: "draft", confirmed: false, publishedAt: null, decisionFinalizedAt: null,
-      scoringVersion: 1, readinessScore: 0, questions: [] };
+      scoringVersion: 2, readinessScore: 0, questions: [] };
     return storeSchema.parse({ ...state, tasks: [...state.tasks, task] });
   }
   const task = state.tasks.find(t => t.id === action.taskId);
@@ -139,7 +143,7 @@ export function reduceStore(state: AppState, action: StoreAction): AppState {
   return storeSchema.parse({ ...state, tasks: state.tasks.map(t => t.id === task.id ? updated : t) });
 }
 
-export const APP_STORAGE_KEY = "nomadex-state-v2";
+export const APP_STORAGE_KEY = "nomadex-state-v3";
 export type LoadedState = { state: AppState; blocked: boolean; warning: string | null };
 export function loadAppState(storage?: Storage): LoadedState {
   const initial = createSeedState();
@@ -147,13 +151,15 @@ export function loadAppState(storage?: Storage): LoadedState {
     const target = storage ?? localStorage;
     const saved = target.getItem(APP_STORAGE_KEY);
     if (saved !== null) return { state: storeSchema.parse(JSON.parse(saved)), blocked: false, warning: null };
+    const previous = target.getItem("nomadex-state-v2");
+    if (previous !== null) return { state: migrateV2(JSON.parse(previous)), blocked: false, warning: "Сохранение перенесено: новые сведения пока неизвестны, рейтинг пересчитан по шкале кейса. Исходная копия сохранена." };
     if (target.getItem("nomadex-draft-v2") !== null || target.getItem("nomadex-draft-v1") !== null) {
       const legacy = loadDraft(target);
       if (legacy.blocked) return { state: initial, blocked: true, warning: legacy.warning };
       const imported: Task = { ...legacy.state.draft, id: "task-imported-local-draft", businessId: initial.businesses[0].id,
         status: "draft", confirmed: legacy.state.confirmed && Boolean(legacy.state.draft.title.trim() && legacy.state.draft.description.trim()),
         publishedAt: null, decisionFinalizedAt: null, readinessScore: calculateRating(legacy.state.draft).total,
-        scoringVersion: 1, questions: [] };
+        scoringVersion: 2, questions: [] };
       return { state: storeSchema.parse({ ...initial, tasks: [imported, ...initial.tasks] }), blocked: false,
         warning: "Рабочий черновик перенесён в список задач. Исходная копия сохранена." };
     }
@@ -172,8 +178,8 @@ export function resetAppState(storage?: Storage): LoadedState {
   return { state, blocked: !saved, warning: saved ? null : "Сброс выполнен только в памяти: хранилище недоступно." };
 }
 
-export function selectCatalog(state: AppState): Task[] {
-  return state.tasks.filter(t => t.status === "published").sort((a, b) =>
+export function selectCatalog(state: AppState, filters: { industry?: string; level?: ReadinessLevel | "" } = {}): Task[] {
+  return state.tasks.filter(t => t.status === "published" && (!filters.industry || t.industry === filters.industry) && (!filters.level || readinessLevel(t.readinessScore).id === filters.level)).sort((a, b) =>
     b.readinessScore - a.readinessScore ||
     Date.parse(b.publishedAt!) - Date.parse(a.publishedAt!) ||
     (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -187,4 +193,19 @@ export function selectTeamPoints(state: AppState, teamId: string): number {
   const selected = new Set(state.proposals.filter(p => p.teamId === teamId && p.status === "selected").map(p => p.id));
   const confirmed = new Set(state.results.filter(r => r.confirmedAt !== null && selected.has(r.proposalId)).map(r => r.proposalId));
   return confirmed.size * 10;
+}
+
+const legacyTaskSchema = legacyDraftSchema.extend({
+  id, businessId: id, status: z.enum(["draft", "published"]), confirmed: z.boolean(), publishedAt: date.nullable(), decisionFinalizedAt: date.nullable(),
+  scoringVersion: z.literal(1), readinessScore: z.number().int().min(0).max(100), questions: legacyQuestions
+}).strict().superRefine((task, ctx) => {
+  if (task.readinessScore !== legacyScore(task)) ctx.addIssue({ code: "custom", message: "Повреждён старый рейтинг" });
+});
+const legacyStoreSchema = storeBaseSchema.extend({ schemaVersion: z.literal(2), tasks: z.array(legacyTaskSchema) }).strict();
+export function migrateV2(raw: unknown): AppState {
+  const previous = legacyStoreSchema.parse(raw);
+  return storeSchema.parse({ ...previous, schemaVersion: 3, tasks: previous.tasks.map(task => {
+    const expanded = { ...createEmptyDraft(), ...task };
+    return { ...expanded, scoringVersion: 2, confirmed: task.status === "published" ? task.confirmed : false, readinessScore: calculateRating(expanded).total };
+  }) });
 }

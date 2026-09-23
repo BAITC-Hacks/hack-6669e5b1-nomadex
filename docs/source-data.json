@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "businesses": [
     {
       "id": "business-demo",
@@ -20,14 +20,19 @@
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1,
+      "scoringVersion": 2,
       "problemContext": "Обращения хранятся в разных каналах; менеджерам не хватает единого списка статусов и ответственных, поэтому заявки теряются.",
       "expectedResult": null,
       "acceptanceCriteria": null,
       "scope": null,
       "resources": null,
       "timingConstraints": null,
-      "readinessScore": 20
+      "readinessScore": 20,
+      "need": "Нужен единый реестр обращений со статусами.",
+      "users": null,
+      "businessContact": null,
+      "interactionFormat": null,
+      "feedbackProcess": null
     },
     {
       "id": "task-draft-002",
@@ -41,14 +46,19 @@
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1,
+      "scoringVersion": 2,
       "problemContext": "Данные по трём точкам обновляются вручную и находятся в отдельных таблицах; сотрудники не успевают замечать нехватку товара.",
       "expectedResult": "Прототип таблицы остатков с точкой продаж, количеством и индикатором минимального запаса.",
       "acceptanceCriteria": null,
       "scope": null,
       "resources": null,
       "timingConstraints": null,
-      "readinessScore": 40
+      "readinessScore": 45,
+      "need": "Нужно видеть остатки по всем точкам и замечать нехватку.",
+      "users": "Сотрудники точек продаж и управляющий сетью.",
+      "businessContact": null,
+      "interactionFormat": null,
+      "feedbackProcess": null
     },
     {
       "id": "task-draft-003",
@@ -62,14 +72,19 @@
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1,
+      "scoringVersion": 2,
       "problemContext": "Инструкции распределены по папкам и названы в разных форматах; новые сотрудники долго ищут нужный материал.",
       "expectedResult": "Каталог документов с названием, темой, кратким описанием и поиском по этим полям.",
       "acceptanceCriteria": null,
       "scope": null,
       "resources": "Предоставим список из 25 названий и кратких описаний без внутренних секретов.",
       "timingConstraints": null,
-      "readinessScore": 55
+      "readinessScore": 65,
+      "need": "Нужно быстро находить инструкции по теме.",
+      "users": "Новые сотрудники, которым нужны инструкции.",
+      "businessContact": null,
+      "interactionFormat": null,
+      "feedbackProcess": null
     },
     {
       "id": "task-draft-004",
@@ -83,14 +98,19 @@
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1,
+      "scoringVersion": 2,
       "problemContext": "Администратор вручную сверяет расписание консультаций; накладки мешают обслуживать клиентов в назначенное время.",
       "expectedResult": "Простой экран выбора даты и свободного временного окна.",
       "acceptanceCriteria": "На примере расписания занятое окно нельзя выбрать; после отправки показаны выбранные дата и время.",
       "scope": "Нужны экран записи и список заявок администратора; интеграция с календарём не входит.",
       "resources": null,
       "timingConstraints": null,
-      "readinessScore": 75
+      "readinessScore": 70,
+      "need": "Нужно показывать свободные окна и исключать накладки.",
+      "users": "Клиенты консультаций и администратор.",
+      "businessContact": "demo-business@example.com (синтетический контакт)",
+      "interactionFormat": "Онлайн-консультация по согласованию, до 20 минут.",
+      "feedbackProcess": "Бизнес проверяет демонстрацию и даёт замечания в течение двух рабочих дней."
     },
     {
       "id": "task-draft-005",
@@ -104,14 +124,19 @@
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1,
+      "scoringVersion": 2,
       "problemContext": "Отзывы хранятся разрозненно; организаторам сложно выделить повторяющиеся темы и предложения по улучшению.",
       "expectedResult": "Экран со списком обезличенных отзывов и ручными тематическими метками.",
       "acceptanceCriteria": "Можно открыть отзыв, назначить метки и отфильтровать список по одной из меток.",
       "scope": "Входит: список, ручные метки и фильтр. Не входит: автоматический анализ тональности.",
       "resources": "Есть 40 синтетических отзывов без персональных данных.",
       "timingConstraints": "Дедлайна нет. Ограничения: локальная демонстрация на синтетических данных, без внешних интеграций.",
-      "readinessScore": 100
+      "readinessScore": 100,
+      "need": "Нужно группировать отзывы и находить повторяющиеся темы.",
+      "users": "Организаторы мероприятий.",
+      "businessContact": "demo-business@example.com (синтетический контакт)",
+      "interactionFormat": "Онлайн-консультация по согласованию, до 20 минут.",
+      "feedbackProcess": "Бизнес проверяет демонстрацию и даёт замечания в течение двух рабочих дней."
     }
   ],
   "tasks": [
@@ -134,7 +159,12 @@
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1
+      "scoringVersion": 2,
+      "need": "Нужен единый реестр обращений со статусами.",
+      "users": "Менеджеры клиентского сервиса.",
+      "businessContact": "demo-business@example.com (синтетический контакт)",
+      "interactionFormat": "Онлайн-консультация по согласованию, до 20 минут.",
+      "feedbackProcess": "Бизнес проверяет демонстрацию и даёт замечания в течение двух рабочих дней."
     },
     {
       "id": "task-002",
@@ -155,7 +185,12 @@
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1
+      "scoringVersion": 2,
+      "need": "Нужно видеть остатки по всем точкам и замечать нехватку.",
+      "users": "Сотрудники точек продаж и управляющий сетью.",
+      "businessContact": "demo-business@example.com (синтетический контакт)",
+      "interactionFormat": "Онлайн-консультация по согласованию, до 20 минут.",
+      "feedbackProcess": "Бизнес проверяет демонстрацию и даёт замечания в течение двух рабочих дней."
     },
     {
       "id": "task-003",
@@ -169,14 +204,19 @@
       "scope": "Входит: каталог и поиск по заранее подготовленным записям. Не входит: загрузка файлов и права доступа.",
       "resources": null,
       "timingConstraints": null,
-      "readinessScore": 75,
+      "readinessScore": 70,
       "status": "published",
       "confirmed": true,
       "publishedAt": "2026-09-23T08:12:00Z",
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1
+      "scoringVersion": 2,
+      "need": "Нужно быстро находить инструкции по теме.",
+      "users": "Новые сотрудники, которым нужны инструкции.",
+      "businessContact": "demo-business@example.com (синтетический контакт)",
+      "interactionFormat": "Онлайн-консультация по согласованию, до 20 минут.",
+      "feedbackProcess": "Бизнес проверяет демонстрацию и даёт замечания в течение двух рабочих дней."
     },
     {
       "id": "task-004",
@@ -190,14 +230,19 @@
       "scope": "Нужны экран записи и список заявок администратора; интеграция с календарём не входит.",
       "resources": null,
       "timingConstraints": null,
-      "readinessScore": 55,
+      "readinessScore": 45,
       "status": "published",
       "confirmed": true,
       "publishedAt": "2026-09-23T08:13:00Z",
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1
+      "scoringVersion": 2,
+      "need": "Нужно показывать свободные окна и исключать накладки.",
+      "users": "Клиенты консультаций и администратор.",
+      "businessContact": null,
+      "interactionFormat": null,
+      "feedbackProcess": null
     },
     {
       "id": "task-005",
@@ -211,14 +256,19 @@
       "scope": null,
       "resources": null,
       "timingConstraints": null,
-      "readinessScore": 40,
+      "readinessScore": 15,
       "status": "published",
       "confirmed": true,
       "publishedAt": "2026-09-23T08:14:00Z",
       "decisionFinalizedAt": null,
       "questions": [],
       "answers": [],
-      "scoringVersion": 1
+      "scoringVersion": 2,
+      "need": null,
+      "users": null,
+      "businessContact": null,
+      "interactionFormat": null,
+      "feedbackProcess": null
     }
   ],
   "teams": [
@@ -312,7 +362,7 @@
         "Реализовать ручное добавление, список, назначение ответственного и фильтрацию.",
         "Проверить отсутствие дубликатов и фильтры на 20 тестовых заявках."
       ],
-      "link": "source-data.md#proposal-001"
+      "link": "/prototypes/demo.html?example=requests"
     },
     {
       "id": "proposal-002",
@@ -333,7 +383,7 @@
         "Собрать форму добавления, карточку со статусом и список заявок.",
         "Проверить сценарий добавления и изменения статуса на тестовых данных."
       ],
-      "link": "source-data.md#proposal-002"
+      "link": "/prototypes/demo.html?example=requests"
     },
     {
       "id": "proposal-003",
@@ -355,7 +405,7 @@
         "Реализовать чтение CSV, таблицу и выделение позиций ниже порога.",
         "Сверить значения с контрольной таблицей по каждой точке."
       ],
-      "link": "source-data.md#proposal-003"
+      "link": "/prototypes/demo.html?example=stock"
     },
     {
       "id": "proposal-004",
@@ -376,7 +426,7 @@
         "Собрать каталог с поиском по названию, теме и описанию.",
         "Проверить поиск по пяти согласованным контрольным запросам."
       ],
-      "link": "source-data.md#proposal-004"
+      "link": "/prototypes/demo.html?example=knowledge"
     },
     {
       "id": "proposal-005",
@@ -398,7 +448,7 @@
         "После согласования собрать список отзывов, ручные метки и фильтр.",
         "Показать результат на согласованном наборе и собрать обратную связь бизнеса."
       ],
-      "link": "source-data.md#proposal-005"
+      "link": "/prototypes/demo.html?example=feedback"
     }
   ]
 }

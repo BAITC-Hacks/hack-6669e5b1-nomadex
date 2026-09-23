@@ -1,3 +1,4 @@
+import { legacyDraftSchema } from "./legacy";
 import { z } from "zod";
 import { createEmptyDraft, draftSchema, type Draft } from "./types";
 export const STORAGE_KEY = "nomadex-draft-v2";
@@ -11,13 +12,19 @@ export function loadDraft(storage?: Storage): LoadedDraft {
   try {
     const target = storage ?? localStorage;
     const value = target.getItem(STORAGE_KEY);
-    if (value !== null) return { state: storedSchema.parse(JSON.parse(value)), blocked: false, warning: null };
+    if (value !== null) {
+      const raw = JSON.parse(value);
+      const current = storedSchema.safeParse(raw);
+      if (current.success) return { state: current.data, blocked: false, warning: null };
+      const old = z.object({ schemaVersion: z.literal(2), draft: legacyDraftSchema, confirmed: z.boolean() }).strict().parse(raw);
+      return { state: { ...old, draft: { ...createEmptyDraft(), ...old.draft }, confirmed: false }, blocked: false, warning: "Проверьте новые поля карточки перед подтверждением." };
+    }
     const old = target.getItem(LEGACY_KEY);
     if (old !== null) {
       const d = legacySchema.parse(JSON.parse(old));
       const draft = draftSchema.parse({ ...createEmptyDraft(), title: d.title, description: d.description,
         problemContext: [d.description, d.target].filter(Boolean).join("\n") || null,
-        expectedResult: d.desiredResult || null, acceptanceCriteria: d.acceptanceCriteria || null,
+        users: d.target || null, expectedResult: d.desiredResult || null, acceptanceCriteria: d.acceptanceCriteria || null,
         scope: d.scope || null, resources: d.resources || null, timingConstraints: d.constraints || null });
       return { state: { schemaVersion: 2, draft, confirmed: false }, blocked: false, warning: "Старый черновик перенесён в новую структуру; проверьте поля перед подтверждением." };
     }

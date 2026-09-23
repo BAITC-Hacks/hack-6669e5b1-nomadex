@@ -18,7 +18,7 @@ async function main() {
     if (!address || typeof address === "string") throw new Error();
     const response = await fetch(`http://127.0.0.1:${address.port}/api/analyze-task`, {
       method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(20000),
-      body: JSON.stringify({ schemaVersion: 1, description: "Синтетический пример: заявки теряются между таблицами. Нужен единый список заявок для менеджеров.", fields: emptyFields(), previousAnswers: [] })
+      body: JSON.stringify({ schemaVersion: 2, description: "Синтетический пример: заявки теряются между таблицами. Нужен единый список заявок для менеджеров.", fields: emptyFields(), previousAnswers: [] })
     });
     const body: unknown = await response.json();
     if (!response.ok) {
@@ -27,7 +27,7 @@ async function main() {
       process.exitCode = 1;
       return;
     }
-    if (!body || typeof body !== "object" || !("mode" in body) || body.mode !== "openai" || !("promptVersion" in body) || body.promptVersion !== 1) throw new Error();
+    if (!body || typeof body !== "object" || !("mode" in body) || body.mode !== "openai" || !("promptVersion" in body) || body.promptVersion !== 2) throw new Error();
     const { mode, promptVersion, ...payload } = body;
     const analysis = parseAnalysis(JSON.stringify(payload));
     console.log(JSON.stringify({ checkedAt: new Date().toISOString(), mode, promptVersion, questions: analysis.questions, missingFields: analysis.missingFields }, null, 2));

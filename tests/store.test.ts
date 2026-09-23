@@ -49,7 +49,7 @@ test("edits invalidate confirmation and recalculate rating without altering othe
   let state = createSeedState(); const task = state.tasks[0]; const other = state.tasks[1];
   state = reduceStore(state, { type: "confirm", actor, taskId: task.id, confirmed: true });
   state = reduceStore(state, { type: "edit", actor, taskId: task.id, draft: { ...taskDraft(task), resources: "Данных нет" } });
-  assert.equal(state.tasks[0].confirmed, false); assert.equal(state.tasks[0].readinessScore, 35); assert.deepEqual(state.tasks[1], other);
+  assert.equal(state.tasks[0].confirmed, false); assert.equal(state.tasks[0].readinessScore, 40); assert.deepEqual(state.tasks[1], other);
 });
 test("team, another business and published task edits are rejected", () => {
   const state = createSeedState(); const task = state.tasks[0];

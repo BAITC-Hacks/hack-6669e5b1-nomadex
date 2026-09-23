@@ -9,7 +9,7 @@ import { fallback, parseAnalysis, requestSchema, emptyFields, type AnalysisInput
 import { createApp, createOpenAIAnalyzer, AnalysisFailure, type Analyzer } from "../server/app";
 import { analyzeTask } from "../src/analysis";
 import { SYSTEM_PROMPT } from "../shared/prompt";
-const input: AnalysisInput = { schemaVersion: 1, description: "Заявки теряются между таблицами", fields: emptyFields(), previousAnswers: [] };
+const input: AnalysisInput = { schemaVersion: 2, description: "Заявки теряются между таблицами", fields: emptyFields(), previousAnswers: [] };
 function payload() { const { mode: _mode, promptVersion: _version, ...result } = fallback(input); return result; }
 class MemoryStorage implements Storage {
   data = new Map<string, string>();
@@ -24,7 +24,7 @@ test("all seed task and draft scores match the actual rating function", () => {
   const data = JSON.parse(readFileSync(new URL("../docs/source-data.json", import.meta.url), "utf8"));
   for (const item of [...data.tasks, ...data.drafts]) assert.equal(calculateRating(item).total, item.readinessScore, item.id);
   const fields = { ...emptyFields(), expectedResult: "не знаю", resources: "данных нет" };
-  assert.equal(calculateRating(fields).total, 15);
+  assert.equal(calculateRating(fields).total, 20);
   fields.resources = null as unknown as string;
   assert.equal(calculateRating(fields).total, 0);
 });
@@ -67,8 +67,11 @@ test("fallback covers missing fields and verifies complete fields", () => {
 test("request limits and published prompt match the contract", () => {
   assert.equal(requestSchema.safeParse({ ...input, description: "x".repeat(8001) }).success, false);
   assert.equal(requestSchema.safeParse({ ...input, teamId: "secret" }).success, false);
-  const doc = readFileSync(new URL("../docs/ai-contract.md", import.meta.url), "utf8");
-  assert.equal(SYSTEM_PROMPT, /```text\n([\s\S]*?)\n```/.exec(doc)?.[1]);
+  const doc = readFileSync(new URL("../docs/ai-contract.md", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  for (const ending of ["\n", "\r\n"]) {
+    const normalized = doc.replace(/\n/g, ending).replace(/\r\n/g, "\n");
+    assert.equal(SYSTEM_PROMPT, /```text\n([\s\S]*?)\n```/.exec(normalized)?.[1]);
+  }
 });
 async function endpoint(analyze: Analyzer, run: (url: string) => Promise<void>) {
   const server = createApp(analyze); server.listen(0, "127.0.0.1"); await once(server, "listening");
@@ -111,7 +114,7 @@ test("client handles offline, non-JSON and server errors with explicit fallback"
   }
 });
 test("client accepts only validated OpenAI response and propagates cancellation", async t => {
-  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ ...payload(), mode: "openai", promptVersion: 1 })));
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ ...payload(), mode: "openai", promptVersion: 2 })));
   assert.equal((await analyzeTask(input)).analysis.mode, "openai");
   const controller = new AbortController(); controller.abort();
   t.mock.method(globalThis, "fetch", async () => { throw Error("aborted"); });
