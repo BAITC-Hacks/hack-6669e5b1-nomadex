@@ -63,7 +63,9 @@ export type StoreAction =
   | { type: "confirm"; actor: Actor; taskId: string; confirmed: boolean }
   | { type: "publish"; actor: Actor; taskId: string; publishedAt: string }
   | { type: "submitProposal"; actor: Actor; taskId: string; id: string; proposal: ProposalInput }
-  | { type: "finalizeDecision"; actor: Actor; taskId: string; selectedProposalIds: string[]; confirmed: boolean; finalizedAt: string };
+  | { type: "finalizeDecision"; actor: Actor; taskId: string; selectedProposalIds: string[]; confirmed: boolean; finalizedAt: string }
+  | { type: "submitResult"; actor: Actor; taskId: string; proposalId: string; text: string }
+  | { type: "confirmResult"; actor: Actor; taskId: string; proposalId: string; confirmedAt: string };
 
 export function createSeedState(): AppState {
   // Validate the entire seed, including declared scores and cross-entity links.
@@ -86,6 +88,24 @@ export function reduceStore(state: AppState, action: StoreAction): AppState {
   }
   const task = state.tasks.find(t => t.id === action.taskId);
   if (!task) throw new Error("Задача не найдена.");
+  if (action.type === "submitResult" || action.type === "confirmResult") {
+    const proposal = state.proposals.find(p => p.id === action.proposalId && p.taskId === task.id);
+    if (task.status !== "published" || !task.decisionFinalizedAt || proposal?.status !== "selected") throw new Error("Результат доступен только по выбранному отклику после решения бизнеса.");
+    const result = state.results.find(r => r.proposalId === proposal.id);
+    if (action.type === "submitResult") {
+      if (action.actor.kind !== "team" || action.actor.id !== proposal.teamId || !state.teams.some(t => t.id === action.actor.id)) throw new Error("Результат может отправить только выбранная команда по своему отклику.");
+      if (result) throw new Error("Результат уже отправлен. Повторная отправка недоступна.");
+      const parsed = resultSchema.safeParse({ proposalId: proposal.id, text: action.text, confirmedAt: null });
+      if (!parsed.success) throw new Error("Опишите результат этапа перед отправкой.");
+      return storeSchema.parse({ ...state, results: [...state.results, parsed.data] });
+    }
+    owner(state, action.actor, task);
+    if (!result) throw new Error("Команда ещё не отправила результат.");
+    // Confirmation is idempotent: keep the first timestamp and derive points from it.
+    if (result.confirmedAt) return state;
+    const confirmedAt = date.parse(action.confirmedAt);
+    return storeSchema.parse({ ...state, results: state.results.map(r => r.proposalId === proposal.id ? { ...r, confirmedAt } : r) });
+  }
   if (action.type === "submitProposal") {
     if (action.actor.kind !== "team" || !state.teams.some(t => t.id === action.actor.id)) throw new Error("Отклик может подать только команда.");
     if (task.status !== "published" || task.decisionFinalizedAt) throw new Error("Приём предложений по этой задаче закрыт.");
@@ -161,4 +181,10 @@ export function selectCatalog(state: AppState): Task[] {
 export function selectOwnedTasks(state: AppState, actor: Actor): Task[] {
   if (actor.kind !== "business") return [];
   return state.tasks.filter(t => t.businessId === actor.id);
+}
+
+export function selectTeamPoints(state: AppState, teamId: string): number {
+  const selected = new Set(state.proposals.filter(p => p.teamId === teamId && p.status === "selected").map(p => p.id));
+  const confirmed = new Set(state.results.filter(r => r.confirmedAt !== null && selected.has(r.proposalId)).map(r => r.proposalId));
+  return confirmed.size * 10;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useState } from "react";
 import type { Profile } from "./types";
-import { loadAppState, reduceStore, resetAppState, saveAppState, selectCatalog, selectOwnedTasks, type AppState, type Actor, type StoreAction } from "./store";
+import { loadAppState, reduceStore, resetAppState, saveAppState, selectCatalog, selectOwnedTasks, selectTeamPoints, type AppState, type Actor, type StoreAction } from "./store";
 import DraftEditor from "./DraftEditor";
 import Proposals from "./Proposals";
 import { TaskView } from "./TaskView";
@@ -51,6 +51,7 @@ export default function App() {
   return <main className="shell">
     <header className="topbar"><div><span className="eyebrow">NomadEX / прототип</span><h1>Задача, которую можно понять</h1><p>Уточните задачу и опубликуйте её для студенческих команд.</p></div><label className="profile">Демо-профиль<select value={profile} onChange={e => changeProfile(e.target.value as Profile)}><option value="business">Представитель бизнеса</option>{state.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label></header>
     <p className="notice">Демонстрация в одном браузере. Каталог общий для всех пяти команд, синхронизации между устройствами нет.</p>
+    {actor.kind === "team" && <p className="team-points" role="status">Баллы вашей команды: <strong>{selectTeamPoints(state, actor.id)}</strong>. За каждый подтверждённый результат — +10. Баллы не влияют на доступ к задачам и их рейтинг.</p>}
     <section className="status"><span className="dot" />{saved && !blocked ? "Данные сохраняются локально" : "Работа без сохранения"}<button className="reset-link" onClick={reset}>Сбросить демоданные</button></section>
     {storageWarning && <p className="warning" role="alert">{storageWarning}</p>}
     {error && <p className="warning" role="alert">{error}</p>}
