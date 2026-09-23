@@ -24,6 +24,14 @@ const proposalSchema = z.object({
   skills: z.array(text), plan: z.array(text).min(1), link: text,
   status: z.enum(["submitted", "selected", "rejected"])
 }).strict();
+export const proposalInputSchema = proposalSchema.pick({ approach: true, expectedResult: true, timing: true, skills: true, plan: true, link: true }).extend({
+  link: text.refine(value => {
+    try { const url = new URL(value); return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password; }
+    catch { return false; }
+  }, "Укажите полную ссылку http:// или https:// без логина и пароля")
+}).strict();
+export type ProposalInput = z.infer<typeof proposalInputSchema>;
+export type Proposal = z.infer<typeof proposalSchema>;
 const resultSchema = z.object({ proposalId: id, text, confirmedAt: date.nullable() }).strict();
 export const storeSchema = z.object({
   schemaVersion: z.literal(2), businesses: z.array(businessSchema).min(1), teams: z.array(teamSchema),
@@ -53,7 +61,9 @@ export type StoreAction =
   | { type: "create"; actor: Actor; id: string }
   | { type: "edit"; actor: Actor; taskId: string; draft: Draft }
   | { type: "confirm"; actor: Actor; taskId: string; confirmed: boolean }
-  | { type: "publish"; actor: Actor; taskId: string; publishedAt: string };
+  | { type: "publish"; actor: Actor; taskId: string; publishedAt: string }
+  | { type: "submitProposal"; actor: Actor; taskId: string; id: string; proposal: ProposalInput }
+  | { type: "finalizeDecision"; actor: Actor; taskId: string; selectedProposalIds: string[]; confirmed: boolean; finalizedAt: string };
 
 export function createSeedState(): AppState {
   // Validate the entire seed, including declared scores and cross-entity links.
@@ -76,7 +86,24 @@ export function reduceStore(state: AppState, action: StoreAction): AppState {
   }
   const task = state.tasks.find(t => t.id === action.taskId);
   if (!task) throw new Error("Задача не найдена.");
+  if (action.type === "submitProposal") {
+    if (action.actor.kind !== "team" || !state.teams.some(t => t.id === action.actor.id)) throw new Error("Отклик может подать только команда.");
+    if (task.status !== "published" || task.decisionFinalizedAt) throw new Error("Приём предложений по этой задаче закрыт.");
+    if (state.proposals.some(p => p.taskId === task.id && p.teamId === action.actor.id)) throw new Error("Команда уже отправила предложение по этой задаче.");
+    const proposal = { ...proposalInputSchema.parse(action.proposal), id: action.id, taskId: task.id, teamId: action.actor.id, status: "submitted" as const };
+    return storeSchema.parse({ ...state, proposals: [...state.proposals, proposal] });
+  }
   owner(state, action.actor, task);
+  if (action.type === "finalizeDecision") {
+    if (task.status !== "published" || task.decisionFinalizedAt) throw new Error("Решение уже зафиксировано или задача ещё не опубликована.");
+    if (!action.confirmed) throw new Error("Подтвердите окончательное решение, включая отказ всем командам.");
+    const selected = new Set(action.selectedProposalIds);
+    if (selected.size !== action.selectedProposalIds.length || [...selected].some(id => !state.proposals.some(p => p.id === id && p.taskId === task.id))) throw new Error("Выберите только предложения этой задачи без повторений.");
+    return storeSchema.parse({ ...state,
+      tasks: state.tasks.map(t => t.id === task.id ? { ...t, decisionFinalizedAt: date.parse(action.finalizedAt) } : t),
+      proposals: state.proposals.map(p => p.taskId === task.id ? { ...p, status: selected.has(p.id) ? "selected" : "rejected" } : p)
+    });
+  }
   if (task.status !== "draft") throw new Error("Опубликованная карточка уже зафиксирована.");
   let updated: Task;
   if (action.type === "edit") {
